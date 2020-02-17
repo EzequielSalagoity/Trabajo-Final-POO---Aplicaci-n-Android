@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Smart Home</string>
+    <string name="action_settings">Configuración</string>
+    <string name="action_help">Ayuda</string>
+</resources>
