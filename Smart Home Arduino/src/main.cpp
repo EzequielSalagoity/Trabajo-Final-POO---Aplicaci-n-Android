@@ -1,7 +1,7 @@
 /*
- Este sketch permite la conexión a un servidor MQTT que:
+  Este sketch permite la conexión a un servidor MQTT que:
     - publica los datos de temperatura y humedad recopilados del sensor DHT11 en los topics
-    casa/temperatura y casa/humedad, respecitivamente.
+    casa/temperatura y casa/humedad, respectivamente.
     - recibe información de los topics casa/luz y casa/luz_reg y actua en consecuencia
 
     Topic: casa/luz. Message: On --> Luz encendida
@@ -129,7 +129,7 @@ void reconnect() {
     String clientId = "ESP8266Client";
     clientId += String(random(0xffff), HEX);
     
-    // Intenro de conexión
+    // Intento de conexión
     //if (client.connect(clientId.c_str())) // sin usuario y contraseña
     if (client.connect(clientId.c_str(),mqtt_user,mqtt_pass))  // con usuario y contraseña     
     {
