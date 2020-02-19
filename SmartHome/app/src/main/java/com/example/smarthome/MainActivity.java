@@ -1,9 +1,12 @@
 package com.example.smarthome;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+
+import android.preference.PreferenceManager;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -15,6 +18,12 @@ public class MainActivity extends AppCompatActivity
     private ImageView luz;
     private ImageView luz_reg;
     private ImageView temperatura;
+
+    // Variables MQTT
+    private static MQTTClass mqttClass;
+    protected String server; //"tcp://192.168.0.145:1883";
+    protected Boolean state;
+    private final String sub_topic = "casa/#"; // Me suscribo a todos los topics
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -57,6 +66,7 @@ public class MainActivity extends AppCompatActivity
             }
         });
 
+
     }
 
     @Override
@@ -87,4 +97,52 @@ public class MainActivity extends AppCompatActivity
 
         return super.onOptionsItemSelected(item);
     }
+
+    protected void onDestroy()
+    {
+        super.onDestroy();
+        if( mqttClass.isConnected() )
+        {
+            mqttClass.Disconnect(getApplicationContext());
+        }
+    }
+
+    protected static MQTTClass getMqttClass()
+    {
+        return mqttClass;
+    }
+
+    protected void onResume()
+    {
+        super.onResume();
+        state = getCloudMQTT();
+        server = getServer();
+        mqttClass = new MQTTClass( getApplicationContext(), server);
+        mqttClass.Connect( getApplicationContext(), sub_topic, state);
+
+    }
+
+    private String getServer()
+    {
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        String text_broker;
+        int text_port;
+
+        text_broker = sharedPreferences.getString("texto_broker","192.168.0.145");  //Default Value
+        text_port = sharedPreferences.getInt("texto_port",1883);   //Default Value
+
+        return "tcp://"+text_broker+":"+text_port;
+    }
+
+    // Verificamos si el servidor MQTT está en la web
+    private Boolean getCloudMQTT()
+    {
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        Boolean estado;
+
+        estado = sharedPreferences.getBoolean("estado_cloud_server",false);
+
+        return estado;
+    }
+
 }

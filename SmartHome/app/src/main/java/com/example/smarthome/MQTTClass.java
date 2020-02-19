@@ -153,7 +153,7 @@ public class MQTTClass
                     @Override
                     public void onSuccess(IMqttToken asyncActionToken) {
                         // We are connected
-                        Toast.makeText(context,"Connected", Toast.LENGTH_SHORT).show();
+                        //Toast.makeText(context,"Connected", Toast.LENGTH_SHORT).show();
 
                         /// ----------> Funcion para suscribirse a los topics <------------
                         Subscribe(context,sub_topic,Qos);

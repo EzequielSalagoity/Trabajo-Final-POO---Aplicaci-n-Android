@@ -32,10 +32,9 @@ public class luz_activity extends AppCompatActivity
     private Boolean switch_state;
 
     // Variables MQTT
-    private MQTTClass mqttClass;
-    private String server; //"tcp://192.168.0.145:1883";
+    private MQTTClass mqttClass = MainActivity.getMqttClass();
     private final String pub_topic = "casa/luz";
-    private Boolean state;
+
 
     // ---------------> Métodos LUZ_ACTIVITY <---------------
 
@@ -69,11 +68,6 @@ public class luz_activity extends AppCompatActivity
                 }
             }
         });
-
-        state = getCloudMQTT();
-        server = getServer();
-        mqttClass = new MQTTClass( getApplicationContext(), server);
-        mqttClass.Connect( getApplicationContext(),state);
     }
 
 
@@ -83,22 +77,11 @@ public class luz_activity extends AppCompatActivity
         loadData();
         UpdateViews();
     }
-
     protected void onPause()
     {
         super.onPause();
         saveData();
     }
-
-    protected void onDestroy()
-    {
-        super.onDestroy();
-        if( mqttClass.isConnected() )
-        {
-            mqttClass.Disconnect(getApplicationContext());
-        }
-    }
-
     //Almacenamos el estado del botón en un archivo llamado Shared Preferences
     //que persiste siempre, incluso sin importar si se apaga el celular.
     private void saveData()
@@ -113,7 +96,6 @@ public class luz_activity extends AppCompatActivity
         //Toast.makeText(this,"Data luz saved",Toast.LENGTH_SHORT).show();
 
     }
-
     // Leemos los datos almacenados de las variables text y switch_state del archivo Shared Preferences
     private void loadData()
     {
@@ -127,29 +109,5 @@ public class luz_activity extends AppCompatActivity
     {
         estado.setText(text);
         estado_switch.setChecked(switch_state);
-    }
-    //  Obtenemos los datos del servidor MQTT:
-    //  -> Dirección IP o link
-    //  -> Puerto utilizado
-    private String getServer()
-    {
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        String text_broker;
-        int text_port;
-
-        text_broker = sharedPreferences.getString("texto_broker","192.168.0.145");  //Default Value
-        text_port = sharedPreferences.getInt("texto_port",1883);   //Default Value
-
-        return "tcp://"+text_broker+":"+text_port;
-    }
-    // Verificamos si el servidor MQTT está en la web
-    private Boolean getCloudMQTT()
-    {
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        Boolean estado;
-
-        estado = sharedPreferences.getBoolean("estado_cloud_server",false);
-
-        return estado;
     }
 }

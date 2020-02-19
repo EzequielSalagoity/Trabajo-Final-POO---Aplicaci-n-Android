@@ -30,10 +30,8 @@ public class luz_reg_activity extends AppCompatActivity
     private int progress;
 
     // Variables MQTT
-    private MQTTClass mqttClass;
-    private String server; //"tcp://192.168.0.145:1883";
+    private MQTTClass mqttClass = MainActivity.getMqttClass();
     private final String pub_topic = "casa/luz_reg";
-    private Boolean state;
 
     // ---------------> Métodos LUZ_REG_ACTIVITY <---------------
 
@@ -72,12 +70,6 @@ public class luz_reg_activity extends AppCompatActivity
 
             }
         });
-
-        state = getCloudMQTT();
-        server = getServer();
-        mqttClass = new MQTTClass( getApplicationContext(), server);
-        mqttClass.Connect( getApplicationContext(),state);
-
     }
 
     protected void onPause()
@@ -93,14 +85,6 @@ public class luz_reg_activity extends AppCompatActivity
         UpdateViews();
     }
 
-    protected void onDestroy()
-    {
-        super.onDestroy();
-        if( mqttClass.isConnected() )
-        {
-            mqttClass.Disconnect(getApplicationContext());
-        }
-    }
     //Almacenamos el estado del botón en un archivo llamado Shared Preferences
     //que persiste siempre, incluso sin importar si se apaga el celular.
     private void saveData()
@@ -130,29 +114,4 @@ public class luz_reg_activity extends AppCompatActivity
         intensidad.setText(text);
         seekBar.setProgress(progress);
     }
-    // Verificamos si el servidor MQTT está en la web
-    private Boolean getCloudMQTT()
-    {
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        Boolean estado;
-
-        estado = sharedPreferences.getBoolean("estado_cloud_server",false);
-
-        return estado;
-    }
-    //  Obtenemos los datos del servidor MQTT:
-    //  -> Dirección IP o link
-    //  -> Puerto utilizado
-    private String getServer()
-    {
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        String text_broker;
-        int text_port;
-
-        text_broker = sharedPreferences.getString("texto_broker","192.168.0.145");  //Default Value
-        text_port = sharedPreferences.getInt("texto_port",1883);   //Default Value
-
-        return "tcp://"+text_broker+":"+text_port;
-    }
-
 }

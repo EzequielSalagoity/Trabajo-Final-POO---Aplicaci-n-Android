@@ -12,9 +12,7 @@ package com.example.smarthome;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.widget.TextView;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
@@ -28,10 +26,7 @@ public class temperatura_activity extends AppCompatActivity
     private TextView humedad;
 
     // Variables MQTT
-    private MQTTClass mqttClass;
-    private String server; //"tcp://192.168.0.145:1883";
-    private final String sub_topic = "casa/#"; // Me suscribo a todos los topics
-    private Boolean state;
+    private MQTTClass mqttClass = MainActivity.getMqttClass();
 
     // ---------------> Métodos TEMPERATURA_ACTIVITY <---------------
 
@@ -44,9 +39,6 @@ public class temperatura_activity extends AppCompatActivity
         temperatura = findViewById(R.id.textView_temp);
         humedad = findViewById(R.id.textView_hum);
 
-        state = getCloudMQTT();
-        server = getServer();
-        mqttClass = new MQTTClass( getApplicationContext(), server);
         mqttClass.setCallback(new MqttCallbackExtended()
         {
             @Override
@@ -80,40 +72,5 @@ public class temperatura_activity extends AppCompatActivity
 
             }
         });
-        mqttClass.Connect( getApplicationContext(), sub_topic, state);
-
-    }
-
-    protected void onDestroy()
-    {
-        super.onDestroy();
-        if( mqttClass.isConnected() )
-        {
-            mqttClass.Disconnect(getApplicationContext());
-        }
-    }
-    // Verificamos si el servidor MQTT está en la web
-    private Boolean getCloudMQTT()
-    {
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        Boolean estado;
-
-        estado = sharedPreferences.getBoolean("estado_cloud_server",false);
-
-        return estado;
-    }
-    //  Obtenemos los datos del servidor MQTT:
-    //  -> Dirección IP o link
-    //  -> Puerto utilizado
-    private String getServer()
-    {
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        String text_broker;
-        int text_port;
-
-        text_broker = sharedPreferences.getString("texto_broker","192.168.0.145");  //Default Value
-        text_port = sharedPreferences.getInt("texto_port",1883);   //Default Value
-
-        return "tcp://"+text_broker+":"+text_port;
     }
 }
