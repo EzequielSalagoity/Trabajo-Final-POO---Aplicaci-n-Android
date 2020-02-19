@@ -40,33 +40,45 @@ public class MainActivity extends AppCompatActivity
         luz_reg = findViewById(R.id.button_luz_reg);
         temperatura = findViewById(R.id.button_temperatura);
 
+        state = getCloudMQTT();
+        server = getServer();
+        mqttClass = new MQTTClass( getApplicationContext(), server);
+        mqttClass.Connect( getApplicationContext(), sub_topic, state);
+
 
         // Defino el método OnClick para cada botón
         luz.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent act_luz = new Intent(MainActivity.this,luz_activity.class);
-                startActivity(act_luz);
+                if( mqttClass.isConnected() )
+                {
+                    Intent act_luz = new Intent(MainActivity.this,luz_activity.class);
+                    startActivity(act_luz);
+                }
             }
         });
 
         luz_reg.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent act_luz_reg = new Intent(MainActivity.this,luz_reg_activity.class);
-                startActivity(act_luz_reg);
+                if( mqttClass.isConnected() )
+                {
+                    Intent act_luz_reg = new Intent(MainActivity.this,luz_reg_activity.class);
+                    startActivity(act_luz_reg);
+                }
             }
         });
 
         temperatura.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent act_temp = new Intent(MainActivity.this,temperatura_activity.class);
-                startActivity(act_temp);
+                if( mqttClass.isConnected() )
+                {
+                    Intent act_temp = new Intent(MainActivity.this,temperatura_activity.class);
+                    startActivity(act_temp);
+                }
             }
         });
-
-
     }
 
     @Override
@@ -110,16 +122,6 @@ public class MainActivity extends AppCompatActivity
     protected static MQTTClass getMqttClass()
     {
         return mqttClass;
-    }
-
-    protected void onResume()
-    {
-        super.onResume();
-        state = getCloudMQTT();
-        server = getServer();
-        mqttClass = new MQTTClass( getApplicationContext(), server);
-        mqttClass.Connect( getApplicationContext(), sub_topic, state);
-
     }
 
     private String getServer()
