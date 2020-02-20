@@ -17,6 +17,8 @@
 #include <PubSubClient.h>
 // Incluimos librería para utilizar sensor de temperatura y humedad
 #include "DHT.h"  //Adafruit
+#include <ESP8266WebServer.h>
+#include <EEPROM.h>
  
 // Definimos el pin digital donde se conecta el sensor de temperaturan y humedad
 #define DHT_PIN 14
@@ -28,23 +30,56 @@
 #define LED_PIN 4
 
 /* ----------> DECLARACIÓN DE VARIABLE <---------- */ 
-// DATOS de la conexión WiFi
-//const char* ssid = "WiFi408 2.4GHz Cocina";
-//const char* password = "0041613798";
-const char* ssid = "Honor 6X";
-const char* password = "8bb91cc04be7";
-
-// DATOS de la conexión MQTT
-//const char* mqtt_server = "192.168.0.145";
-//const int mqtt_port = 1883;
-const char* mqtt_server = "hairdresser.cloudmqtt.com";  // Servidor
-const int mqtt_port = 16435;  // Puerto
-const char* mqtt_user = "psngmpoh";  // Usuario
-const char *mqtt_pass = "1WwW6kwnBrSk";  // Contraseña
-
 // Variables MQTT y WiFi
 WiFiClient espClient;
 PubSubClient client(espClient);
+
+// Variables donde se guardan los datos de configuración ingresados
+// en la web
+char ssid[40]={'\0'};      
+char pass[40]={'\0'};
+char broker[40]={'\0'};  
+char broker_port[40]={'\0'}; 
+char broker_user[40]={'\0'};     
+char broker_pass[40]={'\0'};
+
+//  Datos del ACCESS POINT
+const char *SSIDConf = "NodeMCU_AP";
+const char *PASSWORDConf = "12345678";
+
+String mensaje = "";
+
+ESP8266WebServer server(80);
+
+/* ----------> CÓDIGO HTML PÁGINA DE CONFIGURACÓN <---------- */
+String pagina = "<!DOCTYPE html>"
+"<html>"
+"<head>"
+"<title>Configuración NodeMCU</title>"
+"<meta charset='UTF-8'>"
+"</head>"
+"<body>"
+"</form>"
+"<form action='guardar_conf' method='get'>"
+"SSID:<br><br>"
+"<input class='input1' name='ssid' type='text'><br>"
+"PASSWORD:<br><br>"
+"<input class='input1' name='pass' type='password'><br><br>"
+"SERVER MQTT:<br><br>"
+"<input class='input1' name='broker' type='text'><br><br>"
+"PORT:<br><br>"
+"<input class='input1' name='broker_port' type='text'><br><br>"
+"USER MQTT:<br><br>"
+"<input class='input1' name='broker_user' type='text'><br><br>"
+"PASSWORD:<br><br>"
+"<input class='input1' name='broker_pass' type='password'><br><br>"
+"<input class='boton' type='submit' value='GUARDAR'/><br><br>"
+"</form>"
+"<a href='escanear'><button class='boton'>ESCANEAR</button></a><br><br>";
+
+String paginafin = "</body>"
+"</html>";
+
 // Inicializamos el sensor DHT11
 DHT dht(DHT_PIN, DHTTYPE);
 
@@ -55,6 +90,132 @@ long previousMillis = 0;        // almacena la última vez que fue actualizada
 long interval = 2000;           // intervalo de delay (milliseconds)
 
 /* ----------> DECLARACIÓN DE FUNCIONES <---------- */ 
+
+// Función para llamar a la página de configuración
+void paginaconf() 
+{
+  server.send(200, "text/html", pagina + mensaje + paginafin); 
+}
+
+// Función para grabar en la EEPROM.
+// Recibe la dirección de memoria inicial donde se va a guardar el string
+// y almacena hasta 40 bytes de tamaño
+void grabar(int addr, String a) 
+{
+  int tamano = a.length(); 
+  char inchar[40]; 
+  a.toCharArray(inchar, tamano+1);
+  for (int i = 0; i < tamano; i++) 
+  {
+    EEPROM.write(addr+i, inchar[i]);
+  }
+  for (int i = tamano; i < 40; i++) 
+  {
+    EEPROM.write(addr+i, 255);
+  }
+   EEPROM.commit();
+}
+
+// Función para guardar los datos ingresados en la página de configuración
+// en la EEPROM
+void guardar_conf() 
+{
+  //Recibimos los valores que envia por GET el formulario web
+  Serial.println("--------> DATOS INGRESADOS <--------");
+  Serial.println("\t-> SSID: "+ server.arg("ssid"));
+  grabar(0,server.arg("ssid"));
+  Serial.println("\t-> Password: "+ server.arg("pass"));
+  grabar(40,server.arg("pass"));
+  Serial.println("\t-> Broker: "+ server.arg("broker"));
+  grabar(80,server.arg("broker"));
+  Serial.println("\t-> Port: "+ server.arg("broker_port"));
+  grabar(120,server.arg("broker_port"));
+  Serial.println("\t-> User: "+ server.arg("broker_user"));
+  grabar(160,server.arg("broker_user"));
+  Serial.println("\t-> Password: "+ server.arg("broker_pass"));
+  grabar(200,server.arg("broker_pass"));
+
+  mensaje = "---------> Configuracion Guardada <---------";
+  paginaconf();
+}
+
+// Función para leer la EEPROM.
+// Recibe la dirección del primer elemento que queremos leer en memoria y
+// lee un bloque de 40 bytes.
+// Retorna un string
+String leer(int addr) 
+{
+   byte lectura;
+   String strlectura;
+   for (int i = addr; i < addr+40; i++) 
+   {
+      lectura = EEPROM.read(i);
+      if (lectura != 255) 
+      {
+        strlectura += (char)lectura;
+      }
+   }
+   return strlectura;
+}
+
+// Función que escanea las redes WiFi disponibles al momento de ingresar 
+// los datos en la página de configuración
+void escanear() 
+{  
+  int n = WiFi.scanNetworks(); //devuelve el número de redes encontradas
+  Serial.println("-> Escaneo terminado");
+  if (n == 0) //si no encuentra ninguna red
+  { 
+    Serial.println("-> No se encontraron redes <-");
+    mensaje = "no se encontraron redes";
+  }  
+  else
+  {
+    Serial.print(n);
+    Serial.println(" redes encontradas");
+    mensaje = "";
+    for (int i = 0; i < n; ++i)
+    {
+      // agrega al STRING "mensaje" la información de las redes encontradas 
+      mensaje = (mensaje) + "<p>" + String(i + 1) + ": " + WiFi.SSID(i) + " (" + WiFi.RSSI(i) + ") Ch: " + WiFi.channel(i) + " Enc: " + WiFi.encryptionType(i) + " </p>\r\n";
+      //WiFi.encryptionType 5:WEP 2:WPA/PSK 4:WPA2/PSK 7:open network 8:WPA/WPA2/PSK
+      delay(10);
+    }
+    Serial.println(mensaje);
+    paginaconf();
+  }
+}
+
+// Función que inicializa el modo ACCESS POINT que permite la configuración
+// del broker MQTT y de la red WiFi de la NodeMCU
+void modoconf() 
+{   
+  Serial.println("");
+  Serial.println("---------------> MODO ACCESS POINT <---------------");
+  Serial.println("");
+  Serial.println("----> DATOS DEL ACCESS POINT <---");
+  Serial.println("\t-> SSID: NodeMCU_AP");  
+  Serial.println("\t-> Contraseña: 12345678\n");
+  WiFi.softAP(SSIDConf, PASSWORDConf);
+  IPAddress myIP = WiFi.softAPIP(); 
+  Serial.print("IP del access point: ");
+  Serial.println(myIP);
+  Serial.println("WebServer iniciado...");
+
+  server.on("/", paginaconf); //esta es la pagina de configuracion
+
+  server.on("/guardar_conf", guardar_conf); //Graba en la EEPROM la configuracion
+
+  server.on("/escanear", escanear); //Escanean las redes wifi disponibles
+  
+  server.begin();
+
+  while (true) 
+  {
+      server.handleClient();
+  }
+}
+
 void setup_wifi() 
 {
   WiFi.disconnect();
@@ -65,7 +226,7 @@ void setup_wifi()
   Serial.println("---> START <---");  
   Serial.print("Connecting to ");
   Serial.println(ssid);
-  WiFi.begin(ssid, password);
+  WiFi.begin(ssid, pass);
 
   while (WiFi.status() != WL_CONNECTED) 
   {
@@ -76,7 +237,7 @@ void setup_wifi()
   Serial.println("WiFi connected");
   Serial.println("Your IP address is ");
   Serial.println(WiFi.localIP().toString());
-  client.setServer(mqtt_server, mqtt_port);  
+  client.setServer(broker, atoi(broker_port));  
 }
 
 // Función que recibe los mensajes de MQTT
@@ -131,7 +292,7 @@ void reconnect() {
     
     // Intento de conexión
     //if (client.connect(clientId.c_str())) // sin usuario y contraseña
-    if (client.connect(clientId.c_str(),mqtt_user,mqtt_pass))  // con usuario y contraseña     
+    if (client.connect(clientId.c_str(),broker_user,broker_pass))  // con usuario y contraseña     
     {
       Serial.println("Connected");
       // Una vez conectado, se suscribe a los topics
@@ -152,11 +313,22 @@ void reconnect() {
 // ------> Función de Configuración de la NodeMCU <------
 void setup() 
 {
+  Serial.begin(115200);
   pinMode(LED_REG_PIN, OUTPUT); //D4 -> LED_REG
   pinMode(LED_PIN, OUTPUT);  //D2 -> LED
   pinMode(DHT_PIN, INPUT);  //D5 -> TEMPERATURA Y HUMEDAD
-  Serial.begin(9600);
   dht.begin();
+  EEPROM.begin(512); // Cantidad de bytes
+  if (digitalRead(13) == 0) 
+  {
+    modoconf();
+  }  
+  leer(0).toCharArray(ssid, 40);
+  leer(40).toCharArray(pass, 40);
+  leer(80).toCharArray(broker, 40);
+  leer(120).toCharArray(broker_port, 40);
+  leer(160).toCharArray(broker_user, 40);
+  leer(200).toCharArray(broker_pass, 40);
   setup_wifi();
   client.setCallback(callback);  
 }
@@ -182,7 +354,7 @@ void loop()
     
     if (isnan(h) || isnan(t)) 
     {
-      Serial.println(F("Failed to read from DHT sensor!"));
+      Serial.println("Failed to read from DHT sensor!");
       return;
     }    
     char charTemp[10];     
